@@ -1,0 +1,8 @@
+langchain
+langchain-community
+langchain-anthropic
+anthropic
+chromadb
+sentence-transformers
+gradio
+python-dotenv

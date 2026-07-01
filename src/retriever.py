@@ -5,6 +5,17 @@ warnings.filterwarnings("ignore")
 from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from langchain.tools import tool
+
+@tool
+def search_codebase_tool(query : str) -> str:
+    """
+    Search the codebase for relevant code based on a natural language query.
+    Use this when you need to find functions, classes or code related to a topic.
+    """
+    results = search_codebase(query)
+    return "\n\n".join([doc.page_content for doc in results])
+
 
 load_dotenv()
 

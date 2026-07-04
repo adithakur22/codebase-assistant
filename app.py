@@ -4,11 +4,8 @@ warnings.filterwarnings("ignore")
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
-from src.retriever import get_retriever
-from src.indexer import index_codebase
+from langgraph.prebuilt import create_react_agent
+from src.retriever import search_codebase_tool
 import gradio as gr
 
 load_dotenv()
@@ -19,51 +16,45 @@ llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-# Prompt template
-prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are an expert code assistant. 
-    Answer questions about the codebase using the provided code context.
-    Be concise, clear, and mention which function/file is relevant.
-    If the context doesn't contain enough information, say so honestly."""),
-    ("human", """Code context:
-{context}
+# Tools list
+tools = [search_codebase_tool]
 
-Question: {question}""")
-])
+# Create ReAct agent using LangGraph
+from langchain_core.messages import SystemMessage
 
-def format_docs(docs):
-    return "\n\n".join([doc.page_content for doc in docs])
+system_prompt = """You are a Codebase Assistant. You help developers understand code.
 
-# Build RAG chain
-def build_chain():
-    retriever = get_retriever()
-    chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-    return chain
+You have access to ONE tool: search_codebase — use it to find relevant code.
 
-# Gradio chat function
-chain = build_chain()
+For questions that don't need code search (like math, general questions), answer directly without using any tool.
+Only use search_codebase when the question is about the codebase."""
 
+agent = create_react_agent(
+    llm, 
+    tools,
+    prompt=system_prompt
+)
+
+# Gradio function
 def ask_codebase(question, history):
-    response = chain.invoke(question)
-    return response
+    response = agent.invoke({
+        "messages": [{"role": "user", "content": question}]
+    })
+    return response["messages"][-1].content
 
 # Gradio UI
 demo = gr.ChatInterface(
     fn=ask_codebase,
-    title="🤖 Codebase Assistant",
+    title="🤖 Codebase Assistant Agent",
     description="Ask anything about your codebase!",
     examples=[
         "How is discount calculated?",
         "How does payment processing work?",
-        "What does the send_email function do?"
+        "What does the send_email function do?",
+        "Are there any functions related to tax?"
     ]
 )
 
 if __name__ == "__main__":
-    print("Starting Codebase Assistant...")
+    print("Starting Codebase Assistant Agent...")
     demo.launch()

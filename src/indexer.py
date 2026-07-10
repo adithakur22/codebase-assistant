@@ -26,16 +26,26 @@ SUPPORTED_EXTENSIONS = [
 ]
 
 SKIP_DIRS = [
-    "node_modules", ".git", "venv", "__pycache__", 
+    "node_modules", ".git", "__pycache__",
     "build", "dist", "target", ".idea", ".vscode"
 ]
+
+def is_venv_dir(path):
+    """Check if a directory is a virtual environment"""
+    venv_markers = ["pyvenv.cfg", "Scripts/python.exe", "bin/python"]
+    for marker in venv_markers:
+        if os.path.exists(os.path.join(path, marker)):
+            return True
+    return False
 
 def index_codebase(codebase_path: str):
     # Step 1: Load all supported files
     documents = []
     for root, dirs, files in os.walk(codebase_path):
-        # Skip junk folders
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        # Skip junk folders and virtual environments
+        dirs[:] = [d for d in dirs 
+                   if d not in SKIP_DIRS 
+                   and not is_venv_dir(os.path.join(root, d))]
         
         for file in files:
             if any(file.endswith(ext) for ext in SUPPORTED_EXTENSIONS):

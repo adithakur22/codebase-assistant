@@ -20,7 +20,7 @@ def get_retriever():
         persist_directory="chroma_db",
         embedding_function=embeddings
     )
-    return vectorstore.as_retriever(search_kwargs={"k": 3})
+    return vectorstore.as_retriever(search_kwargs={"k": 5})  # Return top 5 results
 
 def get_cached_retriever():
     global _retriever_instance

@@ -41,9 +41,10 @@ agent = create_react_agent(
 )
 
 # Gradio function
+import time
+
 def ask_codebase(question, history):
     messages = []
-    
     for msg in history:
         if isinstance(msg, dict):
             messages.append({"role": msg["role"], "content": msg["content"]})
@@ -54,8 +55,18 @@ def ask_codebase(question, history):
     
     messages.append({"role": "user", "content": question})
     
-    response = agent.invoke({"messages": messages})
-    return response["messages"][-1].content
+    for attempt in range(3):
+        try:
+            response = agent.invoke({"messages": messages})
+            return response["messages"][-1].content
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                wait_time = (attempt + 1) * 10  # 10s, then 20s
+                time.sleep(wait_time)
+                continue
+            elif "429" in str(e):
+                return "Rate limit hit. Please wait a few seconds and try again."
+            return f"Error: {str(e)}"
 
 # Gradio UI
 demo = gr.ChatInterface(
@@ -63,10 +74,10 @@ demo = gr.ChatInterface(
     title="🤖 Codebase Assistant Agent",
     description="Ask anything about your codebase!",
     examples=[
-        "How is discount calculated?",
-        "How does payment processing work?",
-        "What does the send_email function do?",
-        "Are there any functions related to tax?"
+        "What does this project do?",
+        "What machine learning models are used?",
+        "How does SHAP explainability work?",
+        "Are there any bugs in the code?"
     ]
 )
 

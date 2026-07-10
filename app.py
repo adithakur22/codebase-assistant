@@ -11,11 +11,16 @@ import gradio as gr
 load_dotenv()
 
 # Initialize LLM
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    api_key=os.getenv("GROQ_API_KEY")
-)
 
+from langchain_openai import ChatOpenAI
+
+from langchain_nvidia_ai_endpoints import ChatNVIDIA
+
+llm = ChatNVIDIA(
+    model="z-ai/glm-5.2",
+    api_key=os.getenv("NVIDIA_API_KEY"),
+    max_tokens=1024
+)
 # Tools list
 tools = [search_codebase_tool]
 
@@ -37,9 +42,19 @@ agent = create_react_agent(
 
 # Gradio function
 def ask_codebase(question, history):
-    response = agent.invoke({
-        "messages": [{"role": "user", "content": question}]
-    })
+    messages = []
+    
+    for msg in history:
+        if isinstance(msg, dict):
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        else:
+            human, assistant = msg
+            messages.append({"role": "user", "content": human})
+            messages.append({"role": "assistant", "content": assistant})
+    
+    messages.append({"role": "user", "content": question})
+    
+    response = agent.invoke({"messages": messages})
     return response["messages"][-1].content
 
 # Gradio UI
